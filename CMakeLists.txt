@@ -16,4 +16,6 @@ find_package(Catch2 2.13.3 REQUIRED)
 add_subdirectory(addition)
 add_subdirectory(addition_types)
 
+add_subdirectory(lockfree_ringbuffer)
+
 include(cmake/package.cmake)

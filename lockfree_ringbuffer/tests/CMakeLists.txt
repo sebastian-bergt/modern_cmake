@@ -1,0 +1,7 @@
+add_executable(lockfree_ringbuffer_test lockfree_ringbuffer_test.cpp)
+
+find_package(Threads REQUIRED)
+
+target_link_libraries(lockfree_ringbuffer_test PRIVATE lockfree_ringbuffer Threads::Threads)
+
+mc_add_test(lockfree_ringbuffer_test)

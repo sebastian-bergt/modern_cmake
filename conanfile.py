@@ -10,4 +10,5 @@ class modern_cmake(ConanFile):
 
     def requirements(self):
         self.requires("catch2/2.13.3")
+        self.requires("trompeloeil/v39@rollbear/stable")
         self.requires("opencv/4.5.0")
