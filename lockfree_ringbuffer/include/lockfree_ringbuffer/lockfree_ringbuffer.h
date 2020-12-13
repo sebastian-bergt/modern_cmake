@@ -36,7 +36,7 @@ namespace lockfree_ringbuffer
         ID addWriter() override;
 
         STATUS tryWrite(ID id, T t) override;
-        STATUS tryReadNext(ID id, T &t) override;
+        STATUS tryRead(ID id, T &t) override;
         STATUS tryReadNewest(ID id, T &t) override;
         void clean() override;
 

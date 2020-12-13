@@ -44,6 +44,26 @@ SCENARIO("One producer and no consumer")
     }
 }
 
+SCENARIO("One consumer and no producer")
+{
+    GIVEN("A consumer reads the ringbuffer")
+    {
+        // Assemble
+        using namespace lockfree_ringbuffer;
+        RingBuffer<MemoryHog, 4> ring_buffer;
+        STATUS result{};
+        // Act
+        auto id = ring_buffer.addReader();
+        MemoryHog memory_hog{};
+        result = ring_buffer.tryRead(id, memory_hog);
+    }
+    // Assert
+    THEN("there is nothing to read")
+    {
+        REQUIRE(result == STATUS::ERROR_NOTHING_TO_READ);
+    }
+}
+
 std::chrono::duration<double> elapsed_seconds_since(const std::chrono::time_point<std::chrono::system_clock> &start)
 {
     auto now = std::chrono::system_clock::now();
@@ -52,7 +72,7 @@ std::chrono::duration<double> elapsed_seconds_since(const std::chrono::time_poin
 
 SCENARIO("One producer and one consumer")
 {
-    GIVEN("A produces fills a ringbuffer")
+    GIVEN("A producer fills a ringbuffer")
     {
         using namespace lockfree_ringbuffer;
         RingBuffer<MemoryHog, 8> ring_buffer;
@@ -91,7 +111,7 @@ SCENARIO("One producer and one consumer")
                     auto start = std::chrono::system_clock::now();
                     while (elapsed_seconds_since(start) < 2s)
                     {
-                        if (ring_buffer.tryReadNext(id, memory_hog) == STATUS::SUCCESS)
+                        if (ring_buffer.tryRead(id, memory_hog) == STATUS::SUCCESS)
                             break;
                     }
                     for (std::uint32_t k = 0; k < MAX_VALUES; k++)
@@ -109,7 +129,7 @@ SCENARIO("One producer and one consumer")
 
 SCENARIO("One slow producer and one consumer")
 {
-    GIVEN("A slow produces fills a ringbuffer")
+    GIVEN("A slow producer fills a ringbuffer")
     {
         using namespace lockfree_ringbuffer;
         RingBuffer<MemoryHog, 8> ring_buffer;
@@ -149,7 +169,7 @@ SCENARIO("One slow producer and one consumer")
                     auto start = std::chrono::system_clock::now();
                     while (elapsed_seconds_since(start) < 2s)
                     {
-                        if (ring_buffer.tryReadNext(id, memory_hog) == STATUS::SUCCESS)
+                        if (ring_buffer.tryRead(id, memory_hog) == STATUS::SUCCESS)
                             break;
                     }
                     for (std::uint32_t k = 0; k < MAX_VALUES; k++)
@@ -165,20 +185,20 @@ SCENARIO("One slow producer and one consumer")
     }
 }
 
-SCENARIO("One producer and one slow consumer")
+SCENARIO("Two producer and one slow consumer")
 {
-    GIVEN("A produces fills a ringbuffer")
+    GIVEN("A producer fills a ringbuffer")
     {
         using namespace lockfree_ringbuffer;
         RingBuffer<MemoryHog, 8> ring_buffer;
 
-        std::thread producer([&ring_buffer]() {
+        std::thread producer1([&ring_buffer]() {
             auto id = ring_buffer.addWriter();
             std::uint32_t i = 0;
             for (std::uint32_t j = 0; j < MAX_CYCLES; j++)
             {
                 MemoryHog memory_hog{};
-                for (std::uint32_t k = 0; k < MAX_VALUES; k++)
+                for (std::uint32_t k = 1; k < MAX_VALUES; k++)
                 {
                     i++;
                     memory_hog.values[k] = i;
@@ -207,7 +227,7 @@ SCENARIO("One producer and one slow consumer")
                     while (elapsed_seconds_since(start) < 2s)
                     {
                         std::this_thread::sleep_for(1ms);
-                        if (ring_buffer.tryReadNext(id, memory_hog) == STATUS::SUCCESS)
+                        if (ring_buffer.tryRead(id, memory_hog) == STATUS::SUCCESS)
                             break;
                     }
                     for (std::uint32_t k = 0; k < MAX_VALUES; k++)

@@ -48,7 +48,7 @@ namespace lockfree_ringbuffer
     }
 
     template <typename T, std::size_t S>
-    STATUS RingBuffer<T, S>::tryReadNext(ID id, T &t)
+    STATUS RingBuffer<T, S>::tryRead(ID id, T &t)
     {
         if (reader_position_ == writer_position_)
         {

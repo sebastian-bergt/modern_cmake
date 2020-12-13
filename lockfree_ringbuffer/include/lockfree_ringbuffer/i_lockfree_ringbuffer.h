@@ -24,7 +24,7 @@ namespace lockfree_ringbuffer
         virtual ID addWriter() = 0;
 
         virtual STATUS tryWrite(ID id, T t) = 0;
-        virtual STATUS tryReadNext(ID id, T &t) = 0;
+        virtual STATUS tryRead(ID id, T &t) = 0;
         virtual STATUS tryReadNewest(ID id, T &t) = 0;
         virtual void clean() = 0;
     };
