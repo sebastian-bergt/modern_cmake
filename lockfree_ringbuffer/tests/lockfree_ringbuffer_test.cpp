@@ -36,10 +36,9 @@ SCENARIO("One producer and no consumer")
                     break;
             }
         }
-
+        // Assert
         THEN("the buffer fills up")
         {
-            // Assert
             REQUIRE(result == STATUS::ERROR_BUFFER_FULL);
         }
     }
@@ -102,7 +101,122 @@ SCENARIO("One producer and one consumer")
                     }
                 }
             });
+            producer.join();
+            consumer.join();
+        }
+    }
+}
 
+SCENARIO("One slow producer and one consumer")
+{
+    GIVEN("A slow produces fills a ringbuffer")
+    {
+        using namespace lockfree_ringbuffer;
+        RingBuffer<MemoryHog, 8> ring_buffer;
+
+        std::thread producer([&ring_buffer]() {
+            auto id = ring_buffer.addWriter();
+            std::uint32_t i = 0;
+            for (std::uint32_t j = 0; j < MAX_CYCLES; j++)
+            {
+                MemoryHog memory_hog{};
+                for (std::uint32_t k = 0; k < MAX_VALUES; k++)
+                {
+                    i++;
+                    memory_hog.values[k] = i;
+                }
+
+                using namespace std::chrono_literals;
+                auto start = std::chrono::system_clock::now();
+                while (elapsed_seconds_since(start) < 2s)
+                {
+                    std::this_thread::sleep_for(1ms);
+                    if (ring_buffer.tryWrite(id, memory_hog) == STATUS::SUCCESS)
+                        break;
+                }
+            }
+        });
+        THEN("A consumer reads the ringbuffer")
+        {
+            std::thread consumer([&ring_buffer]() {
+                auto id = ring_buffer.addReader();
+                std::uint32_t i = 0;
+                for (std::uint32_t j = 0; j < MAX_CYCLES; j++)
+                {
+                    MemoryHog memory_hog;
+
+                    using namespace std::chrono_literals;
+                    auto start = std::chrono::system_clock::now();
+                    while (elapsed_seconds_since(start) < 2s)
+                    {
+                        if (ring_buffer.tryReadNext(id, memory_hog) == STATUS::SUCCESS)
+                            break;
+                    }
+                    for (std::uint32_t k = 0; k < MAX_VALUES; k++)
+                    {
+                        i++;
+                        REQUIRE(memory_hog.values[k] == i);
+                    }
+                }
+            });
+            producer.join();
+            consumer.join();
+        }
+    }
+}
+
+SCENARIO("One producer and one slow consumer")
+{
+    GIVEN("A produces fills a ringbuffer")
+    {
+        using namespace lockfree_ringbuffer;
+        RingBuffer<MemoryHog, 8> ring_buffer;
+
+        std::thread producer([&ring_buffer]() {
+            auto id = ring_buffer.addWriter();
+            std::uint32_t i = 0;
+            for (std::uint32_t j = 0; j < MAX_CYCLES; j++)
+            {
+                MemoryHog memory_hog{};
+                for (std::uint32_t k = 0; k < MAX_VALUES; k++)
+                {
+                    i++;
+                    memory_hog.values[k] = i;
+                }
+
+                using namespace std::chrono_literals;
+                auto start = std::chrono::system_clock::now();
+                while (elapsed_seconds_since(start) < 2s)
+                {
+                    if (ring_buffer.tryWrite(id, memory_hog) == STATUS::SUCCESS)
+                        break;
+                }
+            }
+        });
+        THEN("A slow consumer reads the ringbuffer")
+        {
+            std::thread consumer([&ring_buffer]() {
+                auto id = ring_buffer.addReader();
+                std::uint32_t i = 0;
+                for (std::uint32_t j = 0; j < MAX_CYCLES; j++)
+                {
+                    MemoryHog memory_hog;
+
+                    using namespace std::chrono_literals;
+                    auto start = std::chrono::system_clock::now();
+                    while (elapsed_seconds_since(start) < 2s)
+                    {
+                        std::this_thread::sleep_for(1ms);
+                        if (ring_buffer.tryReadNext(id, memory_hog) == STATUS::SUCCESS)
+                            break;
+                    }
+                    for (std::uint32_t k = 0; k < MAX_VALUES; k++)
+                    {
+                        i++;
+                        REQUIRE(memory_hog.values[k] == i);
+                    }
+                }
+            });
             producer.join();
             consumer.join();
         }
