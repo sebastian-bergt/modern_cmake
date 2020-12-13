@@ -6,80 +6,99 @@ namespace lockfree_ringbuffer
     template <typename T, std::size_t S>
     RingBuffer<T, S>::RingBuffer()
     {
-        buffer_ = std::make_unique<T[]>(S); // heap allocated array
-        buffer_size_ = S;
+        buffer_ = std::make_unique<Element<T>[]>(S); // heap allocated array
         clean();
     }
 
     template <typename T, std::size_t S>
-    ID RingBuffer<T, S>::addConsumer()
+    ID RingBuffer<T, S>::addReader()
     {
-        const ID id = consumer_positions_.size();
-        consumer_positions_.push_back(last_producer_position_);
-        return id;
+        return 0;
     }
 
     template <typename T, std::size_t S>
-    ID RingBuffer<T, S>::addProducer()
+    ID RingBuffer<T, S>::addWriter()
     {
-        const ID id = producer_positions_.size();
-        consumer_positions_.push_back(0);
-        return id;
+        return 0;
+    }
+
+    static inline std::size_t modulo_power_of2(const std::size_t &dividend, const std::size_t &divisor)
+    {
+        return dividend & (divisor - 1);
     }
 
     template <typename T, std::size_t S>
-    STATUS RingBuffer<T, S>::write(ID id, T t)
+    STATUS RingBuffer<T, S>::tryWrite(ID id, T t)
     {
-        if (id >= producer_positions_.size())
+        std::size_t writer_index = modulo_power_of2(writer_position_ + 1, S);
+        std::size_t reader_index = modulo_power_of2(reader_position_, S);
+
+        if (writer_index == reader_index)
         {
-            return STATUS::ERROR_ID;
+            return STATUS::ERROR_BUFFER_FULL;
         }
 
-        last_producer_position_++;
-        std::size_t write_position = last_producer_position_ % buffer_size_; // TODO: could be further optimized with buffer sizes of only 2^N
-        producer_positions_.at(id) = write_position;
-        buffer_[write_position] = t;
+        buffer_[writer_index].fully_written = false;
+
+        writer_position_++;
+
+        buffer_[writer_index].content = t;
+        buffer_[writer_index].fully_written = true;
         return STATUS::SUCCESS;
     }
 
     template <typename T, std::size_t S>
-    STATUS RingBuffer<T, S>::readNext(ID id, T &t)
+    STATUS RingBuffer<T, S>::tryReadNext(ID id, T &t)
     {
-        if (id >= consumer_positions_.size())
+        if (reader_position_ == writer_position_)
         {
-            return STATUS::ERROR_ID;
+            return STATUS::ERROR_NOTHING_TO_READ;
+        }
+        std::size_t writer_index = modulo_power_of2(writer_position_, S);
+        std::size_t reader_index = modulo_power_of2(reader_position_ + 1, S);
+
+        if (reader_index == writer_index && !buffer_[reader_index].fully_written)
+        {
+            return STATUS::ERROR_NOTHING_TO_READ;
         }
 
-        consumer_positions_.at(id)++;
-        std::size_t read_position = consumer_positions_.at(id) % buffer_size_;
-        t = buffer_[read_position];
-        if (last_producer_position_ == read_position)
-        {
-            return STATUS::ERROR_READ;
-        }
+        t = buffer_[reader_index].content;
+        reader_position_++;
         return STATUS::SUCCESS;
     }
 
     template <typename T, std::size_t S>
-    STATUS RingBuffer<T, S>::readNewest(ID id, T &t)
+    STATUS RingBuffer<T, S>::tryReadNewest(ID id, T &t)
     {
-        if (id >= consumer_positions_.size())
-        {
-            return STATUS::ERROR_ID;
-        }
-
-        std::size_t read_position = last_producer_position_;
-        consumer_positions_.at(id) = read_position;
-        t = buffer_[read_position];
-        return STATUS::SUCCESS;
     }
+
+    //     if (reader_position_ == writer_position_)
+    //     {
+    //         return STATUS::ERROR_NOTHING_TO_READ;
+    //     }
+    //     std::size_t index = modulo_power_of2(writer_position_, S);
+    //     if (buffer_[index].fully_written)
+    //     {
+    //         t = buffer_[index].content;
+    //         std::size_t tmp = writer_position_;
+    //         reader_position_ = tmp;
+    //     }
+    //     else
+    //     {
+    //         index = (writer_position_ - 1) & (S - 1);
+    //         t = buffer_[index].content;
+    //         std::size_t tmp = writer_position_ - 1;
+    //         reader_position_ = tmp;
+    //     }
+    //     return STATUS::SUCCESS;
+    // }
 
     template <typename T, std::size_t S>
     void RingBuffer<T, S>::clean()
     {
-        std::memset(buffer_.get(), 0, S * sizeof(T));
-        consumer_positions_.clear();
-        producer_positions_.clear();
+        std::memset(buffer_.get(), 0, S * sizeof(Element<T>));
+        reader_position_ = 0;
+        writer_position_ = 0;
     }
 
 } // namespace lockfree_ringbuffer

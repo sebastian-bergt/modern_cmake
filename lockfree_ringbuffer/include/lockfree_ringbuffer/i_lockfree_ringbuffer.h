@@ -8,8 +8,8 @@ namespace lockfree_ringbuffer
     enum class STATUS
     {
         SUCCESS = 0,
-        ERROR_READ,
-        ERROR_WRITE,
+        ERROR_BUFFER_FULL,
+        ERROR_NOTHING_TO_READ,
         ERROR_ID
     };
 
@@ -20,12 +20,12 @@ namespace lockfree_ringbuffer
     {
     public:
         virtual ~IRingBuffer(){};
-        virtual ID addConsumer() = 0;
-        virtual ID addProducer() = 0;
+        virtual ID addReader() = 0;
+        virtual ID addWriter() = 0;
 
-        virtual STATUS write(ID id, T t) = 0;
-        virtual STATUS readNext(ID id, T &t) = 0;
-        virtual STATUS readNewest(ID id, T &t) = 0;
+        virtual STATUS tryWrite(ID id, T t) = 0;
+        virtual STATUS tryReadNext(ID id, T &t) = 0;
+        virtual STATUS tryReadNewest(ID id, T &t) = 0;
         virtual void clean() = 0;
     };
 
