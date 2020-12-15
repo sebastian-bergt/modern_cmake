@@ -58,7 +58,6 @@ namespace lockfree
         };
 
         std::unique_ptr<Element<T>[]> buffer_;
-        std::size_t buffer_size_;
         std::atomic<std::size_t> writer_position_; // is expected to overflow
         std::atomic<std::size_t> reader_position_; // is expected to overflow
     };
@@ -132,6 +131,43 @@ namespace lockfree
     template <typename T, std::size_t S>
     STATUS SWSRRingBuffer<T, S>::tryReadNewest(ID id, T &t)
     {
+        if (reader_position_ == writer_position_)
+        {
+            return STATUS::ERROR_NOTHING_TO_READ;
+        }
+        std::size_t current_writer_position = writer_position_;
+        std::size_t previous_writer_position = current_writer_position - 1;
+
+        std::size_t current_writer_index = modulo_power_of2(current_writer_position, S);
+        std::size_t previous_writer_index = modulo_power_of2(previous_writer_position, S);
+
+        if (buffer_[current_writer_index].fully_written)
+        {
+            t = buffer_[current_writer_index].content;
+            // read happened, run up to writer position
+            while (reader_position_ != current_writer_position)
+            {
+                reader_position_++;
+            }
+        }
+        else
+        {
+            if (buffer_[previous_writer_index].fully_written)
+            {
+                t = buffer_[previous_writer_index].content;
+                // read happened, run up to writer position
+                while (reader_position_ != previous_writer_position)
+                {
+                    reader_position_++;
+                }
+            }
+            else
+            {
+                return STATUS::ERROR_NOT_FULLY_WRITTEN;
+            }
+        }
+
+        return STATUS::SUCCESS;
     }
 
     //     if (reader_position_ == writer_position_)

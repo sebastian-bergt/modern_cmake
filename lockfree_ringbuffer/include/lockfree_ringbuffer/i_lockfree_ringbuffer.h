@@ -10,7 +10,8 @@ namespace lockfree
         SUCCESS = 0,
         ERROR_BUFFER_FULL,
         ERROR_NOTHING_TO_READ,
-        ERROR_ID
+        ERROR_ID,
+        ERROR_NOT_FULLY_WRITTEN
     };
 
     using ID = std::uint32_t;
