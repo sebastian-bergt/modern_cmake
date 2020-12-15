@@ -3,7 +3,7 @@
 
 #include <cstdint>
 
-namespace lockfree_ringbuffer
+namespace lockfree
 {
     enum class STATUS
     {
@@ -29,6 +29,6 @@ namespace lockfree_ringbuffer
         virtual void clean() = 0;
     };
 
-} // namespace lockfree_ringbuffer
+} // namespace lockfree
 
 #endif // I_LOCKFREE_RINGBUFFER_H

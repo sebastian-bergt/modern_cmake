@@ -1,5 +1,5 @@
-#include "lockfree_ringbuffer/lockfree_ringbuffer.h"
+#include "lockfree_ringbuffer/lockfree_swsr_ringbuffer.h"
 
-namespace lockfree_ringbuffer
+namespace lockfree
 {
-} // namespace lockfree_ringbuffer
+} // namespace lockfree
